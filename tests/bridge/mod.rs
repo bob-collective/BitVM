@@ -15,7 +15,6 @@ pub mod peg_in;
 pub mod serialization;
 pub mod setup;
 pub mod start_time;
-pub mod start_time_timeout;
 pub mod take_1;
 pub mod take_2;
 pub mod validate;
