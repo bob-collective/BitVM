@@ -46,8 +46,9 @@ async fn test_peg_in_deposit_tx() {
     )
     .await;
 
+    // also signs.
     let peg_in_deposit_tx = PegInDepositTransaction::new(
-        &depositor_context,
+        &depositor_context,  // the signer
         &depositor_evm_address,
         Input { outpoint, amount },
     );

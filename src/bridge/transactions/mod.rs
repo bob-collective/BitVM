@@ -15,6 +15,5 @@ pub mod pre_signed_musig2;
 pub mod signing;
 pub mod signing_musig2;
 pub mod start_time;
-pub mod start_time_timeout;
 pub mod take_1;
 pub mod take_2;
