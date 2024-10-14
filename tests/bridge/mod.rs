@@ -5,7 +5,6 @@ pub mod challenge;
 pub mod client;
 pub mod data_store;
 pub mod disprove;
-pub mod disprove_chain;
 pub mod helper;
 pub mod integration;
 pub mod kick_off_2;
