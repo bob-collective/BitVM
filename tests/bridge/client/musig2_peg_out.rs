@@ -183,16 +183,6 @@ async fn create_peg_out_graph(
     verifier_1_client.pre_sign_peg_out(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
-    eprintln!("Broadcasting kick-off 1...");
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_kick_off_1(&peg_out_graph_id)
-        .await;
-
-    // Wait for peg-in deposit transaction to be mined
-    println!("Waiting for peg-out kick-off tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-
     if with_kick_off_2_tx {
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client

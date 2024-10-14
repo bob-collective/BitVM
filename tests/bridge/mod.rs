@@ -8,7 +8,6 @@ pub mod disprove;
 pub mod disprove_chain;
 pub mod helper;
 pub mod integration;
-pub mod kick_off_1;
 pub mod kick_off_2;
 pub mod peg_in;
 pub mod serialization;
