@@ -229,10 +229,10 @@ impl PegOutGraph {
             context,
             Input {
                 outpoint: OutPoint {
-                    txid: kick_off_1_txid,
+                    txid: kick_off_2_txid,
                     vout: challenge_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_1_transaction.tx().output[challenge_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[challenge_vout_0].value,
             },
             input_amount_crowdfunding,
         );
@@ -680,6 +680,11 @@ impl PegOutGraph {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
                 } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
                     return PegOutVerifierStatus::PegOutDisproveAvailable;
+                } else if challenge_status
+                    .as_ref()
+                    .is_ok_and(|status| !status.confirmed)
+                {
+                    return PegOutVerifierStatus::PegOutChallengeAvailable;
                 } else {
                     return PegOutVerifierStatus::PegOutDisproveChainAvailable;
                 }
@@ -687,14 +692,7 @@ impl PegOutGraph {
                 .as_ref()
                 .is_ok_and(|status| status.confirmed)
             {
-                if challenge_status
-                    .as_ref()
-                    .is_ok_and(|status| !status.confirmed)
-                {
-                    return PegOutVerifierStatus::PegOutChallengeAvailable;
-                } else {
-                    return PegOutVerifierStatus::PegOutWait;
-                }
+                unimplemented!();
             } else {
                 return PegOutVerifierStatus::PegOutWait;
             }
@@ -836,10 +834,10 @@ impl PegOutGraph {
     ) {
         verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await;
 
-        let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
-        let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
+        let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
+        let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
 
-        if kick_off_1_status.is_ok_and(|status| status.confirmed) {
+        if kick_off_2_status.is_ok_and(|status| status.confirmed) {
             // complete challenge tx
             self.challenge_transaction.add_inputs_and_output(
                 context,

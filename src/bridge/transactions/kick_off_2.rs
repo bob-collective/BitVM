@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_3::Connector3, connector_b::ConnectorB,
+            connector::*, connector_1::Connector1, connector_3::Connector3, connector_a::ConnectorA, connector_b::ConnectorB,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
@@ -63,6 +63,11 @@ impl KickOff2Transaction {
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
+        let connector_a = ConnectorA::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
         let connector_3 = Connector3::new(network, operator_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
@@ -81,12 +86,17 @@ impl KickOff2Transaction {
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
+        let _output_2 = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
+        };
+
         KickOff2Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input_0],
-                output: vec![_output_0, _output_1],
+                output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
