@@ -211,14 +211,6 @@ async fn create_peg_out_graph(
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     if with_kick_off_2_tx {
-        eprintln!("Broadcasting start time...");
-        depositor_operator_verifier_0_client
-            .broadcast_start_time(&peg_out_graph_id)
-            .await;
-
-        println!("Waiting for peg-out start time tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
             .broadcast_kick_off_2(&peg_out_graph_id)
