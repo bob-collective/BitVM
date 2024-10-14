@@ -3,7 +3,6 @@ pub mod base;
 pub mod challenge;
 pub mod disprove;
 pub mod disprove_chain;
-pub mod kick_off_1;
 pub mod kick_off_2;
 pub mod peg_in_confirm;
 pub mod peg_in_deposit;
