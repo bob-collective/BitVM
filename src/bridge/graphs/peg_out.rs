@@ -24,7 +24,6 @@ use super::{
             },
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
-            disprove_chain::DisproveChainTransaction,
             kick_off_2::KickOff2Transaction,
             peg_out::PegOutTransaction,
             pre_signed::PreSignedTransaction,
@@ -174,7 +173,6 @@ pub struct PegOutGraph {
 
     assert_transaction: AssertTransaction,
     challenge_transaction: ChallengeTransaction,
-    disprove_chain_transaction: DisproveChainTransaction,
     disprove_transaction: DisproveTransaction,
     kick_off_2_transaction: KickOff2Transaction,
     take_1_transaction: Take1Transaction,
@@ -206,10 +204,7 @@ impl PegOutGraph {
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
         let kick_off_2_vout_0 = 1;
-        let kick_off_2_transaction = KickOff2Transaction::new(
-            context,
-            kickoff_input,
-        );
+        let kick_off_2_transaction = KickOff2Transaction::new(context, kickoff_input);
         let kick_off_2_txid = kick_off_2_transaction.tx().compute_txid();
 
         let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
@@ -333,18 +328,6 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 2;
-        let disprove_chain_transaction = DisproveChainTransaction::new(
-            context,
-            Input {
-                outpoint: OutPoint {
-                    txid: kick_off_2_txid,
-                    vout: disprove_chain_vout_0.to_u32().unwrap(),
-                },
-                amount: kick_off_2_transaction.tx().output[disprove_chain_vout_0].value,
-            },
-        );
-
         PegOutGraph {
             version: GRAPH_VERSION.to_string(),
             network: context.network,
@@ -356,7 +339,6 @@ impl PegOutGraph {
             peg_in_confirm_txid,
             assert_transaction,
             challenge_transaction,
-            disprove_chain_transaction,
             disprove_transaction,
             kick_off_2_transaction,
             take_1_transaction,
@@ -521,19 +503,6 @@ impl PegOutGraph {
             script_index,
         );
 
-        let disprove_chain_vout_0 = 1;
-        let disprove_chain_transaction = DisproveChainTransaction::new_for_validation(
-            self.network,
-            &self.n_of_n_taproot_public_key,
-            Input {
-                outpoint: OutPoint {
-                    txid: kick_off_2_txid,
-                    vout: disprove_chain_vout_0.to_u32().unwrap(),
-                },
-                amount: kick_off_2_transaction.tx().output[disprove_chain_vout_0].value,
-            },
-        );
-
         PegOutGraph {
             version: GRAPH_VERSION.to_string(),
             network: self.network,
@@ -545,7 +514,6 @@ impl PegOutGraph {
             peg_in_confirm_txid,
             assert_transaction,
             challenge_transaction,
-            disprove_chain_transaction,
             disprove_transaction,
             kick_off_2_transaction,
             take_1_transaction,
@@ -568,10 +536,6 @@ impl PegOutGraph {
         secret_nonces.insert(
             self.assert_transaction.tx().compute_txid(),
             self.assert_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.disprove_chain_transaction.tx().compute_txid(),
-            self.disprove_chain_transaction.push_nonces(context),
         );
         secret_nonces.insert(
             self.disprove_transaction.tx().compute_txid(),
@@ -598,10 +562,6 @@ impl PegOutGraph {
             context,
             &secret_nonces[&self.assert_transaction.tx().compute_txid()],
         );
-        self.disprove_chain_transaction.pre_sign(
-            context,
-            &secret_nonces[&self.disprove_chain_transaction.tx().compute_txid()],
-        );
         self.disprove_transaction.pre_sign(
             context,
             &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
@@ -623,7 +583,6 @@ impl PegOutGraph {
             let (
                 assert_status,
                 challenge_status,
-                disprove_chain_status,
                 disprove_status,
                 kick_off_2_status,
                 _,
@@ -643,9 +602,6 @@ impl PegOutGraph {
                 } else if disprove_status
                     .as_ref()
                     .is_ok_and(|status| status.confirmed)
-                    || disprove_chain_status
-                        .as_ref()
-                        .is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
                 } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
@@ -671,7 +627,6 @@ impl PegOutGraph {
             let (
                 assert_status,
                 challenge_status,
-                disprove_chain_status,
                 disprove_status,
                 kick_off_2_status,
                 peg_out_status,
@@ -689,14 +644,6 @@ impl PegOutGraph {
                         || take_2_status.as_ref().is_ok_and(|status| status.confirmed)
                     {
                         return PegOutOperatorStatus::PegOutComplete;
-                    } else if disprove_chain_status
-                        .as_ref()
-                        .is_ok_and(|status| status.confirmed)
-                        || disprove_status
-                            .as_ref()
-                            .is_ok_and(|status| status.confirmed)
-                    {
-                        return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
                     } else if challenge_status.is_ok_and(|status| status.confirmed) {
                         if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
                             if assert_status.as_ref().unwrap().block_height.is_some_and(
@@ -880,33 +827,10 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn disprove_chain(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
-        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await;
-
-        let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
-        let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
-
-        if kick_off_2_status.is_ok_and(|status| status.confirmed) {
-            // complete disprove chain tx
-            self.disprove_chain_transaction
-                .add_output(output_script_pubkey);
-            let disprove_chain_tx = self.disprove_chain_transaction.finalize();
-
-            // broadcast disprove chain tx
-            let disprove_chain_result = client.broadcast(&disprove_chain_tx).await;
-
-            // verify disprove chain tx result
-            verify_tx_result(&disprove_chain_result);
-        } else {
-            panic!("Kick-off 2 tx has not been confirmed!");
-        }
-    }
-
     pub async fn take_1(&mut self, client: &AsyncClient) {
         verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.challenge_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.assert_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.disprove_chain_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
@@ -991,7 +915,6 @@ impl PegOutGraph {
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
         Option<Result<TxStatus, Error>>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
@@ -1002,10 +925,6 @@ impl PegOutGraph {
 
         let challenge_status = client
             .get_tx_status(&self.challenge_transaction.tx().compute_txid())
-            .await;
-
-        let disprove_chain_status = client
-            .get_tx_status(&self.disprove_chain_transaction.tx().compute_txid())
             .await;
 
         let disprove_status = client
@@ -1043,7 +962,6 @@ impl PegOutGraph {
         return (
             assert_status,
             challenge_status,
-            disprove_chain_status,
             disprove_status,
             kick_off_2_status,
             peg_out_status,
@@ -1064,12 +982,6 @@ impl PegOutGraph {
         if !validate_transaction(
             self.challenge_transaction.tx(),
             peg_out_graph.challenge_transaction.tx(),
-        ) {
-            ret_val = false;
-        }
-        if !validate_transaction(
-            self.disprove_chain_transaction.tx(),
-            peg_out_graph.disprove_chain_transaction.tx(),
         ) {
             ret_val = false;
         }
@@ -1101,9 +1013,6 @@ impl PegOutGraph {
         if !verify_public_nonces_for_tx(&self.assert_transaction) {
             ret_val = false;
         }
-        if !verify_public_nonces_for_tx(&self.disprove_chain_transaction) {
-            ret_val = false;
-        }
         if !verify_public_nonces_for_tx(&self.disprove_transaction) {
             ret_val = false;
         }
@@ -1123,9 +1032,6 @@ impl PegOutGraph {
 
         self.challenge_transaction
             .merge(&source_peg_out_graph.challenge_transaction);
-
-        self.disprove_chain_transaction
-            .merge(&source_peg_out_graph.disprove_chain_transaction);
 
         self.disprove_transaction
             .merge(&source_peg_out_graph.disprove_transaction);

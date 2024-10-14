@@ -785,26 +785,6 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_disprove_chain(
-        &mut self,
-        peg_out_graph_id: &str,
-        output_script_pubkey: ScriptBuf,
-    ) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph
-            .unwrap()
-            .disprove_chain(&self.esplora, output_script_pubkey)
-            .await;
-    }
-
     pub async fn broadcast_take_1(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
