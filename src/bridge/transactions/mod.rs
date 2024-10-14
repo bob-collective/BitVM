@@ -5,7 +5,6 @@ pub mod disprove;
 pub mod disprove_chain;
 pub mod kick_off_1;
 pub mod kick_off_2;
-pub mod kick_off_timeout;
 pub mod peg_in_confirm;
 pub mod peg_in_deposit;
 pub mod peg_in_refund;
