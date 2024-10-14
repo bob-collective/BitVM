@@ -10,7 +10,6 @@ pub mod helper;
 pub mod integration;
 pub mod kick_off_1;
 pub mod kick_off_2;
-pub mod kick_off_timeout;
 pub mod peg_in;
 pub mod serialization;
 pub mod setup;

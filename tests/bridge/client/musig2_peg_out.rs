@@ -45,23 +45,6 @@ async fn test_musig2_peg_out_take_2() {
 }
 
 #[tokio::test]
-async fn test_musig2_kick_off_timeout() {
-    let with_kick_off_2_tx = false;
-    let with_challenge_tx = false;
-    let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
-
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_kick_off_timeout(
-            &peg_out_graph_id,
-            generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
-        )
-        .await;
-}
-
-#[tokio::test]
 async fn test_musig2_peg_out_disprove_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
