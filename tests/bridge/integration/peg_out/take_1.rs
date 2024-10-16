@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use bitcoin::{Address, Amount, OutPoint};
+use bitcoin::{consensus::encode::serialize_hex, Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
@@ -52,12 +52,12 @@ async fn test_take_1_success() {
     let peg_in_confirm_funding_address = connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
+    let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_2_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
         &operator_context.operator_public_key,
     );
-    funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
+    funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
     verify_funding_inputs(&client, &funding_inputs).await;
 
@@ -73,20 +73,14 @@ async fn test_take_1_success() {
     )
     .await;
 
-    // kick-off 1
+    // kick-off 2
     let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
         &client,
         &operator_context,
-        &kick_off_1_funding_utxo_address,
-        kick_off_1_input_amount,
+        &kick_off_2_funding_utxo_address,
+        kick_off_2_input_amount,
     )
     .await;
-
-
-    // mine kick-off 2
-    sleep(Duration::from_secs(60)).await;
-    let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
-    assert!(kick_off_2_result.is_ok());
 
     // take 1
     let vout = 0; // connector 0
@@ -97,7 +91,7 @@ async fn test_take_1_success() {
         },
         amount: peg_in_confirm_tx.output[vout as usize].value,
     };
-    let vout = 0; // connector a
+    let vout = 2; // connector a
     let take_1_input_1 = Input {
         outpoint: OutPoint {
             txid: kick_off_2_txid,
