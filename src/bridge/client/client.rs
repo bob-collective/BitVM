@@ -676,52 +676,6 @@ impl BitVMClient {
         peg_out_graph_id
     }
 
-    pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph.unwrap().kick_off_1(&self.esplora).await;
-    }
-
-    pub async fn broadcast_start_time(&mut self, peg_out_graph_id: &str) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph.unwrap().start_time(&self.esplora).await;
-    }
-
-    pub async fn broadcast_start_time_timeout(
-        &mut self,
-        peg_out_graph_id: &str,
-        output_script_pubkey: ScriptBuf,
-    ) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph
-            .unwrap()
-            .start_time_timeout(&self.esplora, output_script_pubkey)
-            .await;
-    }
-
     pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
@@ -733,26 +687,6 @@ impl BitVMClient {
         }
 
         peg_out_graph.unwrap().kick_off_2(&self.esplora).await;
-    }
-
-    pub async fn broadcast_kick_off_timeout(
-        &mut self,
-        peg_out_graph_id: &str,
-        output_script_pubkey: ScriptBuf,
-    ) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph
-            .unwrap()
-            .kick_off_timeout(&self.esplora, output_script_pubkey)
-            .await;
     }
 
     pub async fn broadcast_challenge(
@@ -848,26 +782,6 @@ impl BitVMClient {
         peg_out_graph
             .unwrap()
             .disprove(&self.esplora, input_script_index, output_script_pubkey)
-            .await;
-    }
-
-    pub async fn broadcast_disprove_chain(
-        &mut self,
-        peg_out_graph_id: &str,
-        output_script_pubkey: ScriptBuf,
-    ) {
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph
-            .unwrap()
-            .disprove_chain(&self.esplora, output_script_pubkey)
             .await;
     }
 

@@ -1,13 +1,14 @@
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Sequence, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 use serde::{Deserialize, Serialize};
+
+use crate::bridge::scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address};
 
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_3::Connector3, connector_b::ConnectorB,
+            connector::*, connector_1::Connector1, connector_3::Connector3, connector_a::ConnectorA, connector_b::ConnectorB,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
@@ -23,7 +24,6 @@ pub struct KickOff2Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_1: Connector1,
 }
 
 impl PreSignedTransaction for KickOff2Transaction {
@@ -58,7 +58,7 @@ impl KickOff2Transaction {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(
+        let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
@@ -66,8 +66,12 @@ impl KickOff2Transaction {
         let connector_3 = Connector3::new(network, operator_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
-        let input_0_leaf = 0;
-        let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
+        let _input_0 = TxIn {
+            previous_output: input_0.outpoint,
+            script_sig: ScriptBuf::new(),
+            sequence: Sequence::MAX,
+            witness: Witness::default(),
+        };
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -77,8 +81,13 @@ impl KickOff2Transaction {
         };
 
         let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT),
+            value: total_output_amount - Amount::from_sat(2 * DUST_AMOUNT),
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
+        };
+
+        let _output_2 = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
         };
 
         KickOff2Transaction {
@@ -86,27 +95,24 @@ impl KickOff2Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input_0],
-                output: vec![_output_0, _output_1],
+                output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
-                script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
+                script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
+                    .script_pubkey()
             }],
-            prev_scripts: vec![connector_1.generate_taproot_leaf_script(input_0_leaf)],
-            connector_1,
+            prev_scripts: vec![generate_pay_to_pubkey_script(operator_public_key)],
         }
     }
 
-    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_1.num_blocks_timelock_0 }
-
     fn sign_input_0(&mut self, context: &OperatorContext) {
         let input_index = 0;
-        pre_sign_taproot_input(
+        pre_sign_p2wsh_input(
             self,
             context,
             input_index,
-            TapSighashType::All,
-            self.connector_1.generate_taproot_spend_info(),
+            EcdsaSighashType::All,
             &vec![&context.operator_keypair],
         );
     }

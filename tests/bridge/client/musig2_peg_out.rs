@@ -45,40 +45,6 @@ async fn test_musig2_peg_out_take_2() {
 }
 
 #[tokio::test]
-async fn test_musig2_start_time_timeout() {
-    let with_kick_off_2_tx = false;
-    let with_challenge_tx = false;
-    let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
-
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_start_time_timeout(
-            &peg_out_graph_id,
-            generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
-        )
-        .await;
-}
-
-#[tokio::test]
-async fn test_musig2_kick_off_timeout() {
-    let with_kick_off_2_tx = false;
-    let with_challenge_tx = false;
-    let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
-
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_kick_off_timeout(
-            &peg_out_graph_id,
-            generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
-        )
-        .await;
-}
-
-#[tokio::test]
 async fn test_musig2_peg_out_disprove_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
@@ -91,23 +57,6 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
         .broadcast_disprove(
             &peg_out_graph_id,
             1,
-            generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
-        )
-        .await;
-}
-
-#[tokio::test]
-async fn test_musig2_peg_out_disprove_chain_with_challenge() {
-    let with_kick_off_2_tx = true;
-    let with_challenge_tx = true;
-    let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
-        create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
-
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_disprove_chain(
-            &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
         )
         .await;
@@ -217,25 +166,7 @@ async fn create_peg_out_graph(
     verifier_1_client.pre_sign_peg_out(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
-    eprintln!("Broadcasting kick-off 1...");
-    depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
-        .broadcast_kick_off_1(&peg_out_graph_id)
-        .await;
-
-    // Wait for peg-in deposit transaction to be mined
-    println!("Waiting for peg-out kick-off tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-
     if with_kick_off_2_tx {
-        eprintln!("Broadcasting start time...");
-        depositor_operator_verifier_0_client
-            .broadcast_start_time(&peg_out_graph_id)
-            .await;
-
-        println!("Waiting for peg-out start time tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
             .broadcast_kick_off_2(&peg_out_graph_id)

@@ -8,10 +8,9 @@ use bitvm::bridge::{
         challenge::ChallengeTransaction,
     },
 };
-
 use crate::bridge::{
     helper::{generate_stub_outpoint, verify_funding_inputs},
-    integration::peg_out::utils::create_and_mine_kick_off_1_tx,
+    integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::setup_test,
 };
 
@@ -58,8 +57,8 @@ async fn test_challenge_success() {
 
     verify_funding_inputs(&client, &funding_inputs).await;
 
-    // kick-off 1
-    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
+    // kick-off 2
+    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
         &client,
         &operator_context,
         &kick_off_1_funding_utxo_address,
@@ -83,10 +82,10 @@ async fn test_challenge_success() {
     let vout = 0; // connector A
     let challenge_kick_off_input = Input {
         outpoint: OutPoint {
-            txid: kick_off_1_txid,
+            txid: kick_off_2_txid,
             vout,
         },
-        amount: kick_off_1_tx.output[vout as usize].value,
+        amount: kick_off_2_tx.output[vout as usize].value,
     };
 
     let mut challenge = ChallengeTransaction::new(
