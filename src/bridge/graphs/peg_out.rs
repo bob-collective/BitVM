@@ -12,6 +12,7 @@ use std::{
     collections::HashMap,
     fmt::{Display, Formatter, Result as FmtResult},
 };
+use crate::signatures::winternitz::PublicKey as WinternitzPublicKey;
 
 use super::{
     super::{
@@ -179,6 +180,7 @@ pub struct PegOutGraph {
     take_2_transaction: Take2Transaction,
 
     operator_public_key: PublicKey,
+    operator_winternitz_public_key: WinternitzPublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
 
     withdrawer_public_key: Option<PublicKey>,
@@ -344,6 +346,7 @@ impl PegOutGraph {
             take_1_transaction,
             take_2_transaction,
             operator_public_key: context.operator_public_key,
+            operator_winternitz_public_key: context.operator_winternitz_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
             withdrawer_public_key: None,
             withdrawer_taproot_public_key: None,
@@ -359,6 +362,7 @@ impl PegOutGraph {
         let kick_off_2_transaction = KickOff2Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
+            &self.operator_winternitz_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -392,6 +396,7 @@ impl PegOutGraph {
         let take_1_transaction = Take1Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
+            &self.operator_winternitz_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -428,6 +433,7 @@ impl PegOutGraph {
         let assert_transaction = AssertTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
+            &self.operator_winternitz_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {
@@ -519,6 +525,7 @@ impl PegOutGraph {
             take_1_transaction,
             take_2_transaction,
             operator_public_key: self.operator_public_key,
+            operator_winternitz_public_key: self.operator_winternitz_public_key,
             operator_taproot_public_key: self.operator_taproot_public_key,
             withdrawer_public_key: None,
             withdrawer_taproot_public_key: None,

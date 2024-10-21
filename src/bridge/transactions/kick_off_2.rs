@@ -4,6 +4,7 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use crate::bridge::scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address};
+use crate::signatures::winternitz::PublicKey as WinternitzPublicKey;
 
 use super::{
     super::{
@@ -41,6 +42,7 @@ impl KickOff2Transaction {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
+            &context.operator_winternitz_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
@@ -54,6 +56,7 @@ impl KickOff2Transaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
+        operator_winternitz_public_key: &WinternitzPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
@@ -64,7 +67,7 @@ impl KickOff2Transaction {
             n_of_n_taproot_public_key,
         );
         let connector_3 = Connector3::new(network, operator_public_key);
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key, operator_winternitz_public_key);
 
         let _input_0 = TxIn {
             previous_output: input_0.outpoint,

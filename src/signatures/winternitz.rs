@@ -18,7 +18,8 @@
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
-
+use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 /// Bits per digit
 const LOG_D: u32 = 4;
 /// Digits are base d+1
@@ -29,8 +30,13 @@ const N0: u32 = 40;
 const N1: usize = 4;
 /// Total number of digits to be signed
 pub const N: u32 = N0 + N1 as u32;
+
 /// The public key type
-pub type PublicKey = [[u8; 20]; N as usize];
+#[derive(Serialize, Deserialize, Eq, PartialEq, Copy, Clone)]
+pub struct PublicKey(
+    #[serde(with = "BigArray")] // serde only implement deserialization for size up to 32
+    [[u8; 20]; N as usize]
+);
 
 pub struct DigitSignature {
     pub hash_bytes: Vec<u8>,
@@ -66,7 +72,7 @@ pub fn generate_public_key(secret_key: &str) -> PublicKey {
     for i in 0..N {
         public_key_array[i as usize] = public_key_for_digit(secret_key, i);
     }
-    public_key_array
+    PublicKey(public_key_array)
 }
 
 /// Compute the signature for the i-th digit of the message
@@ -176,7 +182,7 @@ pub fn checksig_verify(public_key: &PublicKey) -> Script {
             // Verify the signature for this digit
             OP_FROMALTSTACK
             OP_PICK
-            { public_key[N as usize - 1 - digit_index as usize].to_vec() }
+            { public_key.0[N as usize - 1 - digit_index as usize].to_vec() }
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items

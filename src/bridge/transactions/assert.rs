@@ -5,6 +5,7 @@ use bitcoin::{
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::signatures::winternitz::PublicKey as WinternitzPublicKey;
 
 use super::{
     super::{
@@ -72,6 +73,7 @@ impl AssertTransaction {
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,
+            &context.operator_winternitz_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
@@ -81,13 +83,14 @@ impl AssertTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
+        operator_winternitz_public_key: &WinternitzPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
     ) -> Self {
         let connector_4 = Connector4::new(network, operator_public_key);
         let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key, operator_winternitz_public_key);
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
         let input_0_leaf = 1;

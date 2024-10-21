@@ -6,6 +6,8 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::signatures::winternitz::PublicKey as WinternitzPublicKey;
+
 use super::{
     super::{
         connectors::{
@@ -82,6 +84,7 @@ impl Take1Transaction {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
+            &context.operator_winternitz_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
@@ -99,6 +102,7 @@ impl Take1Transaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
+        operator_winternitz_public_key: &WinternitzPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         input_0: Input,
@@ -113,7 +117,7 @@ impl Take1Transaction {
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key, operator_winternitz_public_key);
 
         let input_0_leaf = 0;
         let _input_0 = connector_0.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);

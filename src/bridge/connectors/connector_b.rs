@@ -5,6 +5,9 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
+
+use crate::signatures::winternitz::{self, PublicKey as WinternitzPublicKey, checksig_verify};
+
 use super::{
     super::{
         constants::NUM_BLOCKS_PER_3_DAYS, scripts::*, transactions::base::Input,
@@ -18,13 +21,19 @@ pub struct ConnectorB {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
     pub num_blocks_timelock_1: u32,
+    pub operator_winternitz_public_key: WinternitzPublicKey,
 }
 
 impl ConnectorB {
-    pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+    pub fn new(
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        operator_winternitz_public_key: &WinternitzPublicKey,
+    ) -> Self {
         ConnectorB {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_winternitz_public_key: operator_winternitz_public_key.clone(),
             num_blocks_timelock_1: num_blocks_per_network(network, NUM_BLOCKS_PER_3_DAYS),
         }
     }
@@ -33,7 +42,9 @@ impl ConnectorB {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
 
-    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
+        generate_default_tx_in(input)
+    }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         generate_timelock_taproot_script(
@@ -48,10 +59,14 @@ impl ConnectorB {
 
     fn generate_taproot_leaf_2_script(&self) -> ScriptBuf {
         // TODO commit to super block
-        generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
+        // generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
+        // checksig_verify(&self.operator_winternitz_public_key)
+        todo!()
     }
 
-    fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn {
+        generate_default_tx_in(input)
+    }
 }
 
 impl TaprootConnector for ConnectorB {

@@ -4,6 +4,8 @@ use bitcoin::{
     Network, PublicKey, XOnlyPublicKey,
 };
 
+use crate::signatures::winternitz::{self, PublicKey as WinternitzPublicKey};
+
 use super::base::{generate_keys_from_secret, generate_n_of_n_public_key, BaseContext};
 
 pub struct OperatorContext {
@@ -12,6 +14,7 @@ pub struct OperatorContext {
 
     pub operator_keypair: Keypair,
     pub operator_public_key: PublicKey,
+    pub operator_winternitz_public_key: WinternitzPublicKey,
     pub operator_taproot_public_key: XOnlyPublicKey,
 
     pub n_of_n_public_keys: Vec<PublicKey>,
@@ -36,13 +39,14 @@ impl OperatorContext {
         let (secp, keypair, public_key) = generate_keys_from_secret(network, operator_secret);
         let (n_of_n_public_key, n_of_n_taproot_public_key) =
             generate_n_of_n_public_key(n_of_n_public_keys);
-
+        let operator_winternitz_public_key = winternitz::generate_public_key(operator_secret);
         OperatorContext {
             network,
             secp,
 
             operator_keypair: keypair,
             operator_public_key: public_key,
+            operator_winternitz_public_key,
             operator_taproot_public_key: XOnlyPublicKey::from(public_key),
 
             n_of_n_public_keys: n_of_n_public_keys.clone(),
