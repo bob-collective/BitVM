@@ -28,6 +28,8 @@ pub const D: u32 = (1 << LOG_D) - 1;
 const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
+/// Number of bytes in the message
+pub const MESSAGE_LEN: u32 = (N0 * LOG_D + 7) / 8; // ⌈N0 * LOG_D / 8⌉
 /// Total number of digits to be signed
 pub const N: u32 = N0 + N1 as u32;
 

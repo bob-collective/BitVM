@@ -1,12 +1,10 @@
 use bitcoin::{
-    key::Secp256k1,
-    taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
+    key::Secp256k1, opcodes::all::OP_2DROP, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, ScriptBuf, TxIn, XOnlyPublicKey
 };
+use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
 
-
-use crate::signatures::winternitz::{self, PublicKey as WinternitzPublicKey, checksig_verify};
+use crate::signatures::winternitz::{self, checksig_verify, PublicKey as WinternitzPublicKey, MESSAGE_LEN};
 
 use super::{
     super::{
@@ -58,10 +56,22 @@ impl ConnectorB {
     }
 
     fn generate_taproot_leaf_2_script(&self) -> ScriptBuf {
-        // TODO commit to super block
-        // generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
-        // checksig_verify(&self.operator_winternitz_public_key)
-        todo!()
+        // self.generate_taproot_leaf_0_script().
+        script! {
+            // First check the signature..
+            { self.n_of_n_taproot_public_key }
+            OP_CHECKSIGVERIFY
+
+            // Now force operator to commit
+            { checksig_verify(&self.operator_winternitz_public_key) }
+            // Drop the message from the stack. Note: we can optimize this away
+            for _ in 0..MESSAGE_LEN {
+                OP_DROP
+            }
+            // return success
+            OP_1
+        }
+        .compile()
     }
 
     fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn {

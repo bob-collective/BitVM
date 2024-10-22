@@ -1,13 +1,13 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
-use bitvm::bridge::{
+use bitvm::{bridge::{
     connectors::connector::TaprootConnector,
     graphs::base::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input}, pre_signed::PreSignedTransaction,
     },
-};
+}, execute_taproot_input};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -47,7 +47,13 @@ async fn test_assert_tx() {
     assert_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
     assert_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
+    assert_tx.commit_bits(&operator_context, &[42]);
+
     let tx = assert_tx.finalize();
+
+    // just to debug the script
+    execute_taproot_input(&tx, 0, assert_tx.prev_outs().clone());
+
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

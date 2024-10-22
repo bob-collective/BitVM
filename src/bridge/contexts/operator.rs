@@ -16,6 +16,7 @@ pub struct OperatorContext {
     pub operator_public_key: PublicKey,
     pub operator_winternitz_public_key: WinternitzPublicKey,
     pub operator_taproot_public_key: XOnlyPublicKey,
+    pub operator_winternitz_secret: String,
 
     pub n_of_n_public_keys: Vec<PublicKey>,
     pub n_of_n_public_key: PublicKey,
@@ -48,6 +49,7 @@ impl OperatorContext {
             operator_public_key: public_key,
             operator_winternitz_public_key,
             operator_taproot_public_key: XOnlyPublicKey::from(public_key),
+            operator_winternitz_secret: operator_secret.to_string(),
 
             n_of_n_public_keys: n_of_n_public_keys.clone(),
             n_of_n_public_key,

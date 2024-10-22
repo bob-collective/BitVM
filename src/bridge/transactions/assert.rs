@@ -1,11 +1,12 @@
+use crate::signatures::winternitz::{sign, PublicKey as WinternitzPublicKey};
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
+    absolute, consensus, opcodes::OP_0, Amount, Network, PublicKey, ScriptBuf, TapSighashType,
+    Transaction, TxOut, Witness, XOnlyPublicKey,
 };
+use bitcoin_script::script;
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::signatures::winternitz::PublicKey as WinternitzPublicKey;
 
 use super::{
     super::{
@@ -36,17 +37,27 @@ pub struct AssertTransaction {
 }
 
 impl PreSignedTransaction for AssertTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl PreSignedMusig2Transaction for AssertTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &self.musig2_nonces
+    }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -90,10 +101,14 @@ impl AssertTransaction {
     ) -> Self {
         let connector_4 = Connector4::new(network, operator_public_key);
         let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key, operator_winternitz_public_key);
+        let connector_b = ConnectorB::new(
+            network,
+            n_of_n_taproot_public_key,
+            operator_winternitz_public_key,
+        );
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
 
-        let input_0_leaf = 1;
+        let input_0_leaf = 2;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
@@ -132,7 +147,9 @@ impl AssertTransaction {
         }
     }
 
-    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_b.num_blocks_timelock_1 }
+    pub fn num_blocks_timelock_0(&self) -> u32 {
+        self.connector_b.num_blocks_timelock_1
+    }
 
     fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
         let input_index = 0;
@@ -184,8 +201,34 @@ impl AssertTransaction {
         merge_transactions(&mut self.tx, &assert.tx);
         merge_musig2_nonces_and_signatures(self, assert);
     }
+
+    pub fn commit_bits(&mut self, operator_context: &OperatorContext, message: &[u8]) {
+        // this is a bit hacky, but requires least amount of changes to existing code.
+
+        let commitment = sign(&operator_context.operator_winternitz_secret, message)
+            .into_iter()
+            .flat_map(|signature| {
+                [
+                    signature.hash_bytes,
+                    if signature.message_digit == 0 {
+                        vec![]
+                    } else {
+                        vec![signature.message_digit]
+                    },
+                ]
+            })
+            // .rev()
+            .collect::<Vec<_>>();
+
+        let old_witness = self.tx.input[0].witness.to_vec();
+        let new_witness = [commitment, old_witness].concat();
+
+        self.tx.input[0].witness = Witness::from_slice(&new_witness);
+    }
 }
 
 impl BaseTransaction for AssertTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction {
+        self.tx.clone()
+    }
 }
