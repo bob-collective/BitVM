@@ -9,7 +9,10 @@ pub mod treepp {
 use core::fmt;
 use std::{cmp::min, fs::File, io::Write};
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
+use bitcoin::{
+    hashes::Hash, hex::DisplayHex, taproot::LeafVersion, Opcode, Script, ScriptBuf, TapLeafHash,
+    Transaction, TxOut,
+};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -33,8 +36,8 @@ impl fmt::Display for FmtStack {
             if item.is_empty() {
                 write!(f, "    []    ")?;
             } else {
-            item.reverse();
-            write!(f, "0x{:8}", item.as_hex())?;
+                item.reverse();
+                write!(f, "0x{:8}", item.as_hex())?;
             }
             if iter.peek().is_some() {
                 if (index + 1) % f.width().unwrap_or(4) == 0 {
@@ -48,9 +51,13 @@ impl fmt::Display for FmtStack {
 }
 
 impl FmtStack {
-    pub fn len(&self) -> usize { self.0.len() }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 
-    pub fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
+    pub fn get(&self, index: usize) -> Vec<u8> {
+        self.0.get(index)
+    }
 }
 
 impl fmt::Debug for FmtStack {
@@ -139,6 +146,60 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     }
+}
+
+pub fn execute_taproot_input(
+    tx: &Transaction,
+    input_index: usize,
+    prevouts: Vec<TxOut>,
+) -> ExecuteInfo {
+    let witness_items = tx.input[input_index].witness.to_vec();
+    let script = ScriptBuf::from_bytes(witness_items[witness_items.len() - 2].clone());
+    let stack = witness_items[0..witness_items.len() - 2].to_vec();
+
+    let leaf_hash = TapLeafHash::from_script(
+        Script::from_bytes(script.as_bytes()),
+        LeafVersion::TapScript,
+    );
+
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        Options::default(),
+        TxTemplate {
+            tx: tx.clone(),
+            prevouts,
+            input_idx: input_index,
+            taproot_annex_scriptleaf: Some((leaf_hash, None)),
+        },
+        script,
+        stack,
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    let info = ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    };
+    if !info.success {
+        println!(
+            "ERROR: {:?} {:?} <--- \n STACK: {:4} ",
+            info.error, info.last_opcode, info.final_stack
+        );
+    }
+    println!("Max_stack_items = {}", info.stats.max_nb_stack_items);
+    assert!(info.success);
+
+    return info;
 }
 
 pub fn run(script: treepp::Script) {
@@ -258,15 +319,14 @@ pub fn execute_script_as_chunks(
             },
             scripts.next().unwrap_or_else(|| unreachable!()),
             vec![], // Note: If you put a witness here make sure to adjust
-                                    // Exec::with_stack() to not overwrite it!
+            // Exec::with_stack() to not overwrite it!
             next_stack.clone(),
             next_altstack.clone(),
         )
         .expect("Failed to create Exec");
-        
+
         // Execute the current chunk.
-        while exec.exec_next().is_ok() {
-        }
+        while exec.exec_next().is_ok() {}
 
         if exec.result().unwrap().error.is_some() {
             let res = exec.result().unwrap();
@@ -278,7 +338,7 @@ pub fn execute_script_as_chunks(
                 final_stack: FmtStack(exec.stack().clone()),
                 remaining_script: exec.remaining_script().to_asm_string(),
                 stats: exec.stats().clone(),
-            }
+            };
         };
 
         chunk_stacks.push(exec.stack().len() + exec.altstack().len());
@@ -293,10 +353,12 @@ pub fn execute_script_as_chunks(
     }
     let final_exec = final_exec.unwrap_or_else(|| unreachable!());
     let res = final_exec.result().unwrap();
-    writeln!(stats_file,
+    writeln!(
+        stats_file,
         "intermediate stack transfer sizes: {:?}",
         chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
-    ).expect("Unable to write into stats_file");
+    )
+    .expect("Unable to write into stats_file");
     ExecuteInfo {
         success: res.success,
         error: res.error.clone(),
@@ -306,7 +368,6 @@ pub fn execute_script_as_chunks(
         stats: final_exec.stats().clone(),
     }
 }
-
 
 pub fn execute_script_as_chunks_vs_normal(
     script: treepp::Script,
@@ -322,9 +383,16 @@ pub fn execute_script_as_chunks_vs_normal(
         total_script.extend(script.clone().into_bytes());
     }
     println!("chunk sizes: {:?}", chunk_sizes);
-    
+
     for i in 0..min(compiled_script.len(), total_script.len()) {
-        assert_eq!(compiled_script.as_bytes()[i], total_script[i], "Incorrect at position {}: compiled: {} total: {}", i, compiled_script.as_bytes()[i], total_script[i]);
+        assert_eq!(
+            compiled_script.as_bytes()[i],
+            total_script[i],
+            "Incorrect at position {}: compiled: {} total: {}",
+            i,
+            compiled_script.as_bytes()[i],
+            total_script[i]
+        );
     }
     //assert!(
     //    compiled_script.as_bytes() == total_script,
@@ -421,7 +489,7 @@ pub fn execute_script_as_chunks_vs_normal(
                 final_stack: FmtStack(exec.stack().clone()),
                 remaining_script: exec.remaining_script().to_asm_string(),
                 stats: exec.stats().clone(),
-            }
+            };
         };
 
         chunk_stacks.push(exec.stack().len() + exec.altstack().len());
