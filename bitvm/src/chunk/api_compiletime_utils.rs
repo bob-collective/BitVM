@@ -103,6 +103,27 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     res
 }
 
+
+pub(crate) fn append_bitcom_locking_script_to_partial_scripts_iter(
+    inpubkeys: PublicKeys,
+    ops_scripts: impl IntoIterator<Item = ScriptBuf>,
+) -> impl Iterator<Item = ScriptBuf> {
+    println!("append_bitcom_locking_script_to_partial_scripts; generage_segments_using_mock_vk_and_mock_proof");
+    // mock_vk can be used because generating locking_script doesn't depend upon values or partial scripts; it's only a function of pubkey and ordering of input/outputs
+    let mock_segments = generate_segments_using_mock_vk_and_mock_proof();
+
+    println!("append_bitcom_locking_script_to_partial_scripts; bitcom_scripts_from_segments");
+    let bitcom_scripts =
+        bitcom_scripts_from_segments_iter(mock_segments, inpubkeys);
+    ops_scripts.into_iter()
+        .zip(bitcom_scripts)
+        .map(|(op_scr, bit_scr)| {
+            let mut full_script_bytes = bit_scr.compile().to_bytes();
+            full_script_bytes.extend_from_slice(op_scr.as_bytes());
+            ScriptBuf::from_bytes(full_script_bytes)
+        })
+}
+
 fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Segment> {
     // values known only at runtime, can be mocked
     let q4xc0: ark_bn254::Fq = ark_bn254::Fq::from(
@@ -319,4 +340,51 @@ pub(crate) fn bitcom_scripts_from_segments(
         bitcom_scripts.push(locking_scr);
     }
     bitcom_scripts
+}
+
+pub(crate) fn bitcom_scripts_from_segments_iter(
+    segments: Vec<Segment>,
+    wots_pubkeys: PublicKeys,
+) -> impl Iterator<Item = treepp::Script> {
+    let mut pubkeys_arr = vec![];
+    pubkeys_arr.extend_from_slice(
+        &wots_pubkeys
+            .0
+            .iter()
+            .map(|f| WOTSPubKey::P256(*f))
+            .collect::<Vec<WOTSPubKey>>(),
+    );
+    pubkeys_arr.extend_from_slice(
+        &wots_pubkeys
+            .1
+            .iter()
+            .map(|f| WOTSPubKey::P256(*f))
+            .collect::<Vec<WOTSPubKey>>(),
+    );
+    pubkeys_arr.extend_from_slice(
+        &wots_pubkeys
+            .2
+            .iter()
+            .map(|f| WOTSPubKey::PHash(*f))
+            .collect::<Vec<WOTSPubKey>>(),
+    );
+
+    segments.into_iter().filter(|seg| seg.scr_type != ScriptType::NonDeterministic).map(move |seg| {
+        let mut index_of_bitcommitted_msg = vec![];
+        if !seg.scr_type.is_final_script() {
+            index_of_bitcommitted_msg.push(seg.id);
+        };
+        let sec_in: Vec<u32> = seg.parameter_ids.iter().map(|(f, _)| *f).collect();
+        index_of_bitcommitted_msg.extend_from_slice(&sec_in);
+
+        let mut locking_scr = script! {};
+        for index in index_of_bitcommitted_msg {
+            locking_scr = script! {
+                {locking_scr}
+                {checksig_verify_to_limbs(&pubkeys_arr[index as usize])}
+                {Fq::toaltstack()}
+            };
+        }
+        locking_scr
+    })
 }

@@ -1,6 +1,5 @@
 use crate::chunk::api_compiletime_utils::{
-    append_bitcom_locking_script_to_partial_scripts, generate_partial_script,
-    generate_segments_using_mock_vk_and_mock_proof, partial_scripts_from_segments,
+    append_bitcom_locking_script_to_partial_scripts, append_bitcom_locking_script_to_partial_scripts_iter, generate_partial_script, generate_segments_using_mock_vk_and_mock_proof, partial_scripts_from_segments
 };
 use crate::chunk::api_runtime_utils::{
     execute_script_from_signature, get_assertion_from_segments, get_assertions_from_signature,
@@ -189,6 +188,14 @@ pub fn api_generate_full_tapscripts(
         append_bitcom_locking_script_to_partial_scripts(inpubkeys, ops_scripts_per_link.to_vec());
     assert_eq!(ops_scripts_per_link.len(), taps_per_link.len());
     taps_per_link
+}
+
+pub fn api_generate_full_tapscripts_iter(
+    inpubkeys: PublicKeys,
+    ops_scripts_per_link: impl IntoIterator<Item = ScriptBuf>,
+) -> impl Iterator<Item = ScriptBuf> {
+    println!("api_generate_full_tapscripts; append_bitcom_locking_script_to_partial_scripts");
+    append_bitcom_locking_script_to_partial_scripts_iter(inpubkeys, ops_scripts_per_link)
 }
 
 // Step 3
